@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="el" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Traffic Analyzer & Security Monitor</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="{{ url_for('static', filename='js/dashboard.js') }}?v=2" defer></script>
+</head>
+<body>
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>API Authentication</h2>
+            <p class="modal-subtitle">Συνδεθείτε για πρόσβαση στο dashboard & API</p>
+            <form id="login-form">
+                <input type="text" id="login-username" placeholder="Username" value="admin" required>
+                <input type="password" id="login-password" placeholder="Password" required>
+                <button type="submit" class="btn btn-primary btn-block">Login</button>
+            </form>
+            <p id="login-error" class="login-error"></p>
+        </div>
+    </div>
+
+    <header class="header">
+        <div class="header-content">
+            <h1>Network Traffic Analyzer</h1>
+            <p class="subtitle">Real-Time Security Monitor v2.0</p>
+        </div>
+        <div class="header-actions">
+            <button id="btn-theme" class="btn btn-icon" title="Toggle Dark/Light Mode">&#9790;</button>
+            <span id="capture-status" class="status-badge status-stopped">Stopped</span>
+            <button id="btn-start" class="btn btn-primary" disabled>Start Capture</button>
+            <button id="btn-stop" class="btn btn-danger" disabled>Stop Capture</button>
+            <div class="export-dropdown">
+                <button id="btn-export" class="btn btn-secondary" disabled>Export &#9662;</button>
+                <div id="export-menu" class="dropdown-menu">
+                    <a href="#" data-export="csv" data-type="packets">CSV — Packets</a>
+                    <a href="#" data-export="csv" data-type="alerts">CSV — Alerts</a>
+                    <a href="#" data-export="csv" data-type="dns">CSV — DNS</a>
+                    <a href="#" data-export="csv" data-type="top-ips">CSV — Top IPs</a>
+                    <a href="#" data-export="pdf">PDF — Security Report</a>
+                </div>
+            </div>
+            <button id="btn-logout" class="btn btn-sm" style="display:none">Logout</button>
+        </div>
+    </header>
+
+    <main class="container">
+        <!-- Statistics Cards -->
+        <section class="stats-grid">
+            <div class="stat-card">
+                <span class="stat-label">Total Packets</span>
+                <span id="stat-packets" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Packets (1h)</span>
+                <span id="stat-packets-hour" class="stat-value">0</span>
+            </div>
+            <div class="stat-card alert-card">
+                <span class="stat-label">Active Alerts</span>
+                <span id="stat-alerts" class="stat-value">0</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">DNS Queries</span>
+                <span id="stat-dns" class="stat-value">0</span>
+            </div>
+            <div class="stat-card warning-card">
+                <span class="stat-label">Suspicious DNS</span>
+                <span id="stat-suspicious-dns" class="stat-value">0</span>
+            </div>
+            <div class="stat-card alert-card">
+                <span class="stat-label">Failed Logins</span>
+                <span id="stat-failed-logins" class="stat-value">0</span>
+            </div>
+            <div class="stat-card critical-card">
+                <span class="stat-label">Brute-Force</span>
+                <span id="stat-brute-force" class="stat-value">0</span>
+            </div>
+            <div class="stat-card critical-card">
+                <span class="stat-label">Blacklist Hits</span>
+                <span id="stat-blacklist" class="stat-value">0</span>
+            </div>
+        </section>
+
+        <!-- Charts -->
+        <section class="charts-row">
+            <div class="panel">
+                <h2>Protocol Distribution</h2>
+                <canvas id="protocol-chart"></canvas>
+            </div>
+            <div class="panel">
+                <h2>Top IPs by Traffic</h2>
+                <canvas id="top-ips-chart"></canvas>
+            </div>
+        </section>
+
+        <!-- Alerts & DNS -->
+        <section class="tables-row">
+            <div class="panel">
+                <h2>Security Alerts</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Severity</th>
+                                <th>Type</th>
+                                <th>Source IP</th>
+                                <th>Country</th>
+                                <th>Message</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="alerts-body">
+                            <tr><td colspan="7" class="empty">No alerts</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>DNS Monitoring</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Source IP</th>
+                                <th>Country</th>
+                                <th>Query</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="dns-body">
+                            <tr><td colspan="6" class="empty">No DNS queries</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Failed Logins & Top IPs -->
+        <section class="tables-row">
+            <div class="panel">
+                <h2>Failed Login Attempts</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Source IP</th>
+                                <th>Country</th>
+                                <th>Target</th>
+                                <th>Service</th>
+                                <th>Port</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logins-body">
+                            <tr><td colspan="6" class="empty">No failed logins detected</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>Top IPs (GeoIP)</h2>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>IP Address</th>
+                                <th>Country</th>
+                                <th>Packets</th>
+                                <th>Bytes</th>
+                                <th>Blacklisted</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topips-body">
+                            <tr><td colspan="5" class="empty">No data</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recent Packets -->
+        <section class="panel">
+            <h2>Recent Packets</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Source</th>
+                            <th>Src Country</th>
+                            <th>Destination</th>
+                            <th>Dst Country</th>
+                            <th>Protocol</th>
+                            <th>Ports</th>
+                            <th>Size</th>
+                        </tr>
+                    </thead>
+                    <tbody id="packets-body">
+                        <tr><td colspan="8" class="empty">No packets captured</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer class="footer">
+        <p>Real-Time Network Traffic Analyzer &amp; Security Monitor v2.0</p>
+        <p class="footer-tech">Python &middot; Scapy &middot; Flask &middot; SQLAlchemy &middot; JWT &middot; GeoIP &middot; Docker</p>
+    </footer>
+
+</body>
+</html>

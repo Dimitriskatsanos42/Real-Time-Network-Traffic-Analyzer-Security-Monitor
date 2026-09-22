@@ -1,0 +1,8 @@
+# Network Security Monitor — IP Blacklist
+# Μία IP ανά γραμμή. Γραμμές με # είναι σχόλια.
+# Προσθέστε γνωστές κακόβουλες IPs εδώ.
+
+# Παραδείγματα (RFC 5737 documentation ranges — για testing)
+192.0.2.1
+198.51.100.10
+203.0.113.50
